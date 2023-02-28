@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Runtime.Remoting.Messaging;
+using UnityEngine;
 
 namespace EasyAI.Navigation
 {
@@ -141,11 +142,11 @@ namespace EasyAI.Navigation
         {
             // TODO - Assignment 3 - Complete the remaining steering behaviours and use them to improve the microbes level.
             double evaderSpeed = Vector2.Distance(evader, evaderLastPosition) * deltaTime;
-            float estimate = (float)((position - evader).magnitude / (speed + evaderSpeed));
-            Vector2 evaderVelocity = ((evader - evaderLastPosition) / deltaTime) * estimate + evader;
+            float estimate = (float)((evader - position).magnitude / (speed + evaderSpeed));
+            Vector2 evaderVelocity = (evader - evaderLastPosition) / deltaTime * estimate + evader;
             
 
-            return Seek(position,velocity,position + evaderVelocity * estimate,speed);
+            return Seek(position,velocity,evaderVelocity,speed);
         }
 
         /// <summary>
@@ -161,7 +162,12 @@ namespace EasyAI.Navigation
         private static Vector2 Evade(Vector2 position, Vector2 velocity, Vector2 pursuer, Vector2 pursuerLastPosition, float speed, float deltaTime)
         {
             // TODO - Assignment 3 - Complete the remaining steering behaviours and use them to improve the microbes level.
-            return Vector2.zero;
+            double pursuerSpeed = Vector2.Distance(pursuer, pursuerLastPosition) * deltaTime;
+            float estimateP = (float)((pursuer - position).magnitude / (speed + pursuerSpeed));
+            Vector2 evaderVelocity = (pursuer - pursuerLastPosition) / deltaTime * estimateP + pursuer;
+
+
+            return Flee(position, velocity, evaderVelocity, speed);
         }
     }
 }
