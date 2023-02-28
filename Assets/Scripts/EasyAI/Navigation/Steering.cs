@@ -118,7 +118,8 @@ namespace EasyAI.Navigation
         private static Vector2 Flee(Vector2 position, Vector2 velocity, Vector2 pursuer, float speed)
         {
             // TODO - Assignment 3 - Complete the remaining steering behaviours and use them to improve the microbes level.
-            return Vector2.zero;
+            Vector2 x = (position - pursuer).normalized * speed - velocity;
+            return x;
         }
 
         /// <summary>
@@ -131,10 +132,20 @@ namespace EasyAI.Navigation
         /// <param name="speed">The speed at which the agent can move.</param>
         /// <param name="deltaTime">The time elapsed between when the target is in its current position and its previous.</param>
         /// <returns>The velocity to apply to the agent to perform the pursuit.</returns>
+        
+        //Length() is magnitude
+        //vehicles speed is speed
+        //evader speed - use evaders current position, last position, and delta time. distance(a,b) * delattime
+        //evader velocity = ((current pos - last pos)/delta time) * look ahead time + current evader pos
         private static Vector2 Pursue(Vector2 position, Vector2 velocity, Vector2 evader, Vector2 evaderLastPosition, float speed, float deltaTime)
         {
             // TODO - Assignment 3 - Complete the remaining steering behaviours and use them to improve the microbes level.
-            return Vector2.zero;
+            double evaderSpeed = Vector2.Distance(evader, evaderLastPosition) * deltaTime;
+            float estimate = (float)((position - evader).magnitude / (speed + evaderSpeed));
+            Vector2 evaderVelocity = ((evader - evaderLastPosition) / deltaTime) * estimate + evader;
+            
+
+            return Seek(position,velocity,position + evaderVelocity * estimate,speed);
         }
 
         /// <summary>
