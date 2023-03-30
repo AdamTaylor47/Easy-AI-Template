@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using EasyAI.Navigation;
 using EasyAI.Navigation.Nodes;
@@ -10,6 +11,12 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
+using static System.Net.Mime.MediaTypeNames;
+using Debug = UnityEngine.Debug;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace EasyAI
 {
@@ -46,7 +53,7 @@ namespace EasyAI
             Active,
             Selected
         }
-    
+
         /// <summary>
         /// What GUI State to display.
         /// Main - Displays a list of all agents and global messages. Never in this state if there is only one agent in the scene.
@@ -61,7 +68,7 @@ namespace EasyAI
             Components,
             Component
         }
-        
+
         /// <summary>
         /// The width of the GUI buttons to open their respective menus when they are closed.
         /// </summary>
@@ -133,16 +140,6 @@ namespace EasyAI
         public static List<Agent> CurrentAgents => Singleton.Agents;
 
         /// <summary>
-        /// List of all navigation nodes.
-        /// </summary>
-        public static List<Vector3> Nodes => Singleton._nodes;
-
-        /// <summary>
-        /// List of all navigation connections.
-        /// </summary>
-        public static List<Connection> Connections => Singleton._connections;
-
-        /// <summary>
         /// How much height difference can there be between string pulls.
         /// </summary>
         public static float PullMaxHeight => Singleton.pullMaxHeight;
@@ -156,7 +153,7 @@ namespace EasyAI
         /// The singleton agent manager.
         /// </summary>
         protected static Manager Singleton;
-    
+
         /// <summary>
         /// All registered states.
         /// </summary>
@@ -196,7 +193,7 @@ namespace EasyAI
         /// List of all navigation connections.
         /// </summary>
         private readonly List<Connection> _connections = new();
-    
+
         /// <summary>
         /// List of all navigation nodes.
         /// </summary>
@@ -211,7 +208,7 @@ namespace EasyAI
         [Tooltip("The mind or global state agents are in. Initialize it with the global state to start it. If left empty the agent will have manual right-click-to-move controls.")]
         [SerializeField]
         private State mind;
-        
+
         [Tooltip("How close an agent can be to a location its seeking or pursuing to declare it as reached. Set negative for none.")]
         [SerializeField]
         private float seekAcceptableDistance = 0.1f;
@@ -229,7 +226,7 @@ namespace EasyAI
         [Min(0)]
         [SerializeField]
         private float navigationRadius = 0.5f;
-        
+
         [Header("Navigation")]
         [Tooltip("Which layers can nodes be placed on.")]
         [SerializeField]
@@ -241,7 +238,7 @@ namespace EasyAI
 
         [Tooltip(
             "How much height difference can there be between string pulls, set to zero for no limit.\n" +
-            "Increase this value if generated paths are being generated between too high of slopes/stairs."
+            "Increase this value if generated paths are being generated between too high off slopes/stairs."
         )]
         [Min(0)]
         [SerializeField]
@@ -250,10 +247,6 @@ namespace EasyAI
         [Tooltip("Lookup table to save and load navigation.")]
         [SerializeField]
         private LookupTable lookupTable;
-
-        [Tooltip("Check to load the lookup data, otherwise new data will be generated and saved.")]
-        [SerializeField]
-        private bool loadLookupTable;
 
         [Header("Performance")]
         [Tooltip("The maximum number of agents which can be updated in a single frame. Set to zero to be unlimited.")]
@@ -265,13 +258,13 @@ namespace EasyAI
         [Min(0)]
         [SerializeField]
         private int maxMessages = 100;
-        
+
         [Header("UI")]
         [Tooltip("How wide the details list is. Set to zero to disable details list rendering.")]
         [Min(0)]
         [SerializeField]
         private float detailsWidth = 500;
-        
+
         [Tooltip("How wide the controls list is. Set to zero to disable controls list rendering.")]
         [Min(0)]
         [SerializeField]
@@ -288,17 +281,17 @@ namespace EasyAI
             "Unique - No messages will be duplicated with the prior instance of the message being removed from its list when an identical message is added again."
         )]
         private MessagingMode _messageMode = MessagingMode.Compact;
-    
+
         [Header("Visualization")]
         [Tooltip("The currently selected camera. Set this to start with that camera active. Leaving empty will default to the first camera by alphabetic order.")]
         [SerializeField]
         private Camera selectedCamera;
-    
+
         [Tooltip(
             "Determine what path lines are drawn.\n" +
             "Off - No lines are drawn.\n" +
             "All - Lines for every move, navigation, and connection is drawn.\n" +
-            "Active - Lines for every move and navigation drawn.\n"+
+            "Active - Lines for every move and navigation drawn.\n" +
             "Selected - Only lines for the moves and navigation of the selected agent are drawn."
         )]
         [SerializeField]
@@ -308,7 +301,7 @@ namespace EasyAI
         /// All cameras in the scene.
         /// </summary>
         private Camera[] _cameras = Array.Empty<Camera>();
-        
+
         /// <summary>
         /// The global messages.
         /// </summary>
@@ -323,7 +316,7 @@ namespace EasyAI
         /// All agents which move during a fixed update tick.
         /// </summary>
         private readonly List<Agent> _fixedUpdateAgents = new();
-    
+
         /// <summary>
         /// State of the GUI system.
         /// </summary>
@@ -355,11 +348,6 @@ namespace EasyAI
         private IntelligenceComponent _selectedComponent;
 
         /// <summary>
-        /// The navigation lookup table.
-        /// </summary>
-        private NavigationLookup[] _navigationTable;
-
-        /// <summary>
         /// Lookup a path to take from a starting position to an end goal.
         /// </summary>
         /// <param name="position">The starting position.</param>
@@ -372,7 +360,7 @@ namespace EasyAI
             {
                 return new() { goal };
             }
-            
+
             // Check if there is a direct line of sight so we can skip pathing and just move directly towards the goal.
             if (Singleton.navigationRadius <= 0)
             {
@@ -392,14 +380,14 @@ namespace EasyAI
                     return new() { goal };
                 }
             }
-        
+
             // Get the starting node and end nodes closest to their positions.
             Vector3 nodePosition = Nearest(position);
             Vector3 nodeGoal = Nearest(goal);
 
             // Add the starting position to the path.
             List<Vector3> path = new() { position };
-        
+
             // If the first node is not the same as the starting position, add it as well.
             if (nodePosition != position)
             {
@@ -412,14 +400,14 @@ namespace EasyAI
                 try
                 {
                     // Get the next node to move to.
-                    NavigationLookup lookup = Singleton._navigationTable.First(l => l.current == nodePosition && l.goal == nodeGoal);
-                
+                    NavigationLookup lookup = Singleton.lookupTable.Data.First(l => l.current == nodePosition && l.goal == nodeGoal);
+
                     // If the node is the goal destination, all nodes in the path have been finished so stop the loop.
                     if (lookup.next == nodeGoal)
                     {
                         break;
                     }
-                
+
                     // Move to the next node and add it to the path.
                     nodePosition = lookup.next;
                     path.Add(nodePosition);
@@ -429,10 +417,10 @@ namespace EasyAI
                     break;
                 }
             }
-        
+
             // Add the goal node to the path.
             path.Add(nodeGoal);
-        
+
             // If the goal node and the goal itself are not the same, add the goal itself to the path as well.
             if (goal != nodeGoal)
             {
@@ -447,7 +435,7 @@ namespace EasyAI
 
             return path;
         }
-        
+
         /// <summary>
         /// Perform string pulling to shorten a path. Path list does not need to be returned, simply remove nodes from it.
         /// </summary>
@@ -465,7 +453,7 @@ namespace EasyAI
                     {
                         continue;
                     }
-                
+
                     // If a node can be skipped as there is line of sight without it, remove it.
                     if (Manager.NavigationRadius <= 0)
                     {
@@ -473,7 +461,7 @@ namespace EasyAI
                         {
                             path.RemoveAt(j-- - 1);
                         }
-                        
+
                         continue;
                     }
 
@@ -505,7 +493,7 @@ namespace EasyAI
                 {
                     return node;
                 }
-            
+
                 // Otherwise if there is a line of sight to the node, return it.
                 if (Singleton.navigationRadius <= 0)
                 {
@@ -513,7 +501,7 @@ namespace EasyAI
                     {
                         return node;
                     }
-                    
+
                     continue;
                 }
 
@@ -581,7 +569,7 @@ namespace EasyAI
             {
                 return;
             }
-            
+
             GUI.Label(new(x + p, y, w - p, h), message);
         }
 
@@ -604,8 +592,8 @@ namespace EasyAI
                     return;
                 }
             }
-        
-            GUI.Box(new(x,y,w,(h + p) * number - p), string.Empty);
+
+            GUI.Box(new(x, y, w, (h + p) * number - p), string.Empty);
         }
 
         /// <summary>
@@ -656,7 +644,7 @@ namespace EasyAI
             {
                 return;
             }
-            
+
             // Add to their movement handling list.
             Singleton.Agents.Add(agent);
             switch (agent)
@@ -668,10 +656,10 @@ namespace EasyAI
                     Singleton._fixedUpdateAgents.Add(fixedUpdateAgent);
                     break;
             }
-            
+
             // If the agent had any cameras attached to it we need to add them.
             FindCameras();
-            
+
             CheckGizmos();
         }
 
@@ -703,28 +691,28 @@ namespace EasyAI
             switch (agent)
             {
                 case TransformAgent updateAgent:
-                {
-                    if (Singleton._updateAgents.Contains(updateAgent))
                     {
-                        Singleton._updateAgents.Remove(updateAgent);
-                    }
+                        if (Singleton._updateAgents.Contains(updateAgent))
+                        {
+                            Singleton._updateAgents.Remove(updateAgent);
+                        }
 
-                    break;
-                }
+                        break;
+                    }
                 case RigidbodyAgent fixedUpdateAgent:
-                {
-                    if (Singleton._fixedUpdateAgents.Contains(fixedUpdateAgent))
                     {
-                        Singleton._fixedUpdateAgents.Remove(fixedUpdateAgent);
-                    }
+                        if (Singleton._fixedUpdateAgents.Contains(fixedUpdateAgent))
+                        {
+                            Singleton._fixedUpdateAgents.Remove(fixedUpdateAgent);
+                        }
 
-                    break;
-                }
+                        break;
+                    }
             }
 
             // If the agent had any cameras attached to it we need to remove them.
             FindCameras();
-            
+
             CheckGizmos();
         }
 
@@ -811,14 +799,14 @@ namespace EasyAI
             {
                 hideFlags = HideFlags.HideAndDontSave
             };
-            
+
             // Turn on alpha blending.
             _lineMaterial.SetInt(SrcBlend, (int)BlendMode.SrcAlpha);
             _lineMaterial.SetInt(DstBlend, (int)BlendMode.OneMinusSrcAlpha);
-            
+
             // Turn backface culling off.
             _lineMaterial.SetInt(Cull, (int)CullMode.Off);
-            
+
             // Turn off depth writes.
             _lineMaterial.SetInt(ZWrite, 0);
         }
@@ -832,7 +820,7 @@ namespace EasyAI
             Transform agentTransform = agent.transform;
             Vector3 position = agentTransform.position;
             Quaternion rotation = agentTransform.rotation;
-            
+
             // If the agent is moving, draw a yellow line indicating the direction it is currently moving in.
             if (agent.MoveAcceleration > 0 && agent.MoveVelocity != Vector2.zero)
             {
@@ -860,11 +848,11 @@ namespace EasyAI
                 {
                     // Assign different colors for different behaviours.
                     GL.Color(Steering.GizmosColor(movement.Behaviour));
-            
+
                     // Draw a line from the agent's position showing the force of this movement.
                     GL.Vertex(position);
                     GL.Vertex(position + rotation * (new Vector3(movement.MoveVector.x, position.y, movement.MoveVector.y).normalized * 2));
-            
+
                     // Draw another line from the agent's position to where the agent is seeking/pursuing/fleeing/evading to/from.
                     GL.Vertex(position);
                     GL.Vertex(new(movement.Position.x, position.y, movement.Position.y));
@@ -916,7 +904,7 @@ namespace EasyAI
         {
             Render(10, 10, 20, 5);
         }
-        
+
         private void OnRenderObject()
         {
             // We don't want to make rendering calls if there is no need cause it can be a problem on certain platforms like web.
@@ -935,27 +923,27 @@ namespace EasyAI
                     }
                     return;
                 case PathState.Active:
-                {
-                    if (Agents.Any(a => a.Path.Count > 0 || a.Moves.Count > 0))
                     {
-                        break;
-                    }
+                        if (Agents.Any(a => a.Path.Count > 0 || a.Moves.Count > 0))
+                        {
+                            break;
+                        }
 
-                    return;
-                }
+                        return;
+                    }
                 case PathState.Off:
                 case PathState.Selected:
                 default:
-                {
-                    if (SelectedAgent != null && (SelectedAgent.Path.Count > 0 || SelectedAgent.Moves.Count > 0))
                     {
-                        break;
-                    }
+                        if (SelectedAgent != null && (SelectedAgent.Path.Count > 0 || SelectedAgent.Moves.Count > 0))
+                        {
+                            break;
+                        }
 
-                    return;
-                }
+                        return;
+                    }
             }
-            
+
             LineMaterial();
             _lineMaterial.SetPass(0);
 
@@ -1029,11 +1017,11 @@ namespace EasyAI
             // Button to change messaging mode.
             y = NextItem(y, h, p);
             if (GuiButton(x, y, w / 2 - p, h, Singleton._messageMode switch
-                {
-                    MessagingMode.Compact => "Message Mode: Compact",
-                    MessagingMode.All => "Message Mode: All",
-                    _ => "Message Mode: Unique"
-                }))
+            {
+                MessagingMode.Compact => "Message Mode: Compact",
+                MessagingMode.All => "Message Mode: All",
+                _ => "Message Mode: Unique"
+            }))
             {
                 ChangeMessageMode();
             }
@@ -1071,13 +1059,13 @@ namespace EasyAI
             {
                 w = Screen.width - 4 * p;
             }
-            
+
             // Button open/close details.
             if (GuiButton(x, y, w, h, Singleton._detailsOpen ? "Close" : "Details"))
             {
                 Singleton._detailsOpen = !Singleton._detailsOpen;
             }
-            
+
             if (!Singleton._detailsOpen)
             {
                 return;
@@ -1108,7 +1096,7 @@ namespace EasyAI
                         Singleton._state = GuiState.Main;
                     }
                 }
-                
+
                 RenderAgent(x, y, w, h, p);
 
                 return;
@@ -1141,7 +1129,7 @@ namespace EasyAI
                     Singleton._selectedComponent = null;
                     Singleton._state = GuiState.Components;
                 }
-                
+
                 RenderComponent(x, y, w, h, p);
                 return;
             }
@@ -1163,18 +1151,18 @@ namespace EasyAI
                 Singleton.SelectedAgent = agent;
                 Singleton._state = GuiState.Agent;
             }
-            
+
             // Display global messages.
             if (Singleton._globalMessages.Count == 0)
             {
                 return;
             }
-            
+
             y = RenderMessageOptions(x, y, w, h, p);
-            
+
             y = NextItem(y, h, p);
             GuiBox(x, y, w, h, p, Singleton._globalMessages.Count);
-            
+
             foreach (string message in Singleton._globalMessages)
             {
                 GuiLabel(x, y, w, h, p, message);
@@ -1197,7 +1185,7 @@ namespace EasyAI
                 Singleton._state = GuiState.Main;
                 return;
             }
-            
+
             y = NextItem(y, h, p);
             int length = 2;
             if (Singleton.Agents.Count > 1)
@@ -1238,21 +1226,21 @@ namespace EasyAI
                 GuiLabel(x, y, w, h, p, Singleton.SelectedAgent.name);
                 y = NextItem(y, h, p);
             }
-        
+
             if (Singleton.SelectedAgent.State != null)
             {
                 GuiLabel(x, y, w, h, p, $"State: {Singleton.SelectedAgent.State}");
                 y = NextItem(y, h, p);
             }
-        
+
             if (Singleton.SelectedAgent.PerformanceMeasure != null)
             {
                 GuiLabel(x, y, w, h, p, $"Performance: {Singleton.SelectedAgent.Performance}");
                 y = NextItem(y, h, p);
             }
-        
+
             GuiLabel(x, y, w, h, p, $"Position: {Singleton.SelectedAgent.transform.position} | Velocity: {Singleton.SelectedAgent.MoveVelocity.magnitude}");
-        
+
             y = NextItem(y, h, p);
             GuiLabel(x, y, w, h, p, $"Rotation: {Singleton.SelectedAgent.Visuals.rotation.eulerAngles.y} Degrees" + (Singleton.SelectedAgent.LookingToTarget ? $" | Looking to {Singleton.SelectedAgent.LookTarget} at {Singleton.SelectedAgent.LookSpeed} degrees/second." : string.Empty));
 
@@ -1302,10 +1290,10 @@ namespace EasyAI
 
             // Display all messages for the agent.
             y = RenderMessageOptions(x, y, w, h, p);
-            
+
             y = NextItem(y, h, p);
             GuiBox(x, y, w, h, p, Singleton.SelectedAgent.MessageCount);
-            
+
             foreach (string message in Singleton.SelectedAgent.Messages)
             {
                 GuiLabel(x, y, w, h, p, message);
@@ -1328,7 +1316,7 @@ namespace EasyAI
                 Singleton._state = GuiState.Main;
                 return;
             }
-            
+
             // List all sensors.
             y = NextItem(y, h, p);
             GuiBox(x, y, w, h, p, 1);
@@ -1351,7 +1339,7 @@ namespace EasyAI
                 Singleton._selectedComponent = sensor;
                 Singleton._state = GuiState.Component;
             }
-            
+
             // Display all actuators.
             y = NextItem(y, h, p);
             GuiBox(x, y, w, h, p, 1);
@@ -1361,7 +1349,7 @@ namespace EasyAI
                 1 => "1 Actuator",
                 _ => $"{Singleton.SelectedAgent.Actuators.Length} Actuators"
             });
-            
+
             foreach (Actuator actuator in Singleton.SelectedAgent.Actuators)
             {
                 // Button to select an actuator.
@@ -1375,7 +1363,7 @@ namespace EasyAI
                 Singleton._state = GuiState.Component;
             }
         }
-        
+
         /// <summary>
         /// Render the automatic component GUI.
         /// </summary>
@@ -1391,23 +1379,23 @@ namespace EasyAI
                 Singleton._state = GuiState.Components;
                 return;
             }
-            
+
             // Display component details.
             y = NextItem(y, h, p);
             GuiBox(x, y, w, h, p, 1);
             GuiLabel(x, y, w, h, p, $"{Singleton.SelectedAgent.name} | {Singleton._selectedComponent}");
-            
+
             // Display any custom details implemented for the component.
             y = Singleton._selectedComponent.DisplayDetails(x, y, w, h, p);
-            
+
             // Display component messages.
             if (!Singleton._selectedComponent.HasMessages)
             {
                 return;
             }
-            
+
             y = RenderMessageOptions(x, y, w, h, p);
-            
+
             y = NextItem(y, h, p);
             GuiBox(x, y, w, h, p, Singleton._selectedComponent.MessageCount);
 
@@ -1432,7 +1420,7 @@ namespace EasyAI
             {
                 w = ClosedSize;
             }
-        
+
             if (Singleton.Agents.Count == 0 && w + 4 * p > Screen.width)
             {
                 w = Screen.width - 4 * p;
@@ -1442,7 +1430,7 @@ namespace EasyAI
             {
                 return;
             }
-            
+
             x = Screen.width - x - w;
 
             // Button open/close controls.
@@ -1450,7 +1438,7 @@ namespace EasyAI
             {
                 Singleton._controlsOpen = !Singleton._controlsOpen;
             }
-            
+
             if (!Singleton._controlsOpen)
             {
                 return;
@@ -1470,7 +1458,7 @@ namespace EasyAI
                         Singleton._state = GuiState.Agent;
                     }
                 }
-            
+
                 y = NextItem(y, h, p);
             }
             else
@@ -1549,7 +1537,7 @@ namespace EasyAI
                     }
                 }
             }
-            
+
 #if (!UNITY_EDITOR && !UNITY_WEBGL)
             // Button to quit.
             y = NextItem(y, h, p);
@@ -1590,7 +1578,7 @@ namespace EasyAI
                     change = true;
                     Singleton.paths++;
                 }
-            
+
                 if (Singleton.paths > PathState.Selected)
                 {
                     change = true;
@@ -1664,7 +1652,7 @@ namespace EasyAI
                 }
             }
         }
-        
+
         /// <summary>
         /// Coroutine lasts for exactly one frame to step though each time step.
         /// </summary>
@@ -1694,163 +1682,187 @@ namespace EasyAI
             Singleton = this;
         }
 
-        protected virtual void Start()
+        /// <summary>
+        /// Bake navigation data.
+        /// </summary>
+#if UNITY_EDITOR
+        [MenuItem("Easy-AI/Bake Navigation")]
+        public static void BakeNavigation()
         {
-            // If we should use a pre-generated lookup table, use it if one exists.
-            if (loadLookupTable)
+            if (UnityEngine.Application.isPlaying)
             {
-                if (lookupTable != null)
+                Debug.Log("Can't bake in play mode.");
+                return;
+            }
+            
+            Stopwatch stopwatch = new();
+            stopwatch.Start();
+            
+            Singleton = FindObjectOfType<Manager>();
+            if (Singleton == null)
+            {
+                Debug.LogError("No manager found in the scene.");
+                return;
+            }
+
+            if (Singleton.lookupTable == null)
+            {
+                Debug.Log("No lookup table attached to the manager.");
+                return;
+            }
+
+            Singleton._nodes.Clear();
+            
+            // Generate all node areas in the scene.
+            foreach (NodeArea nodeArea in FindObjectsOfType<NodeArea>())
+            {
+                Singleton._nodes.AddRange(nodeArea.Generate());
+            }
+
+            foreach (Node node in FindObjectsOfType<Node>())
+            {
+                Singleton._nodes.Add(node.transform.position);
+            }
+
+            // Setup all freely-placed nodes.
+            foreach (Vector3 p in Singleton._nodes)
+            {
+                foreach (Vector3 v in Singleton._nodes)
                 {
-                    _navigationTable = lookupTable.Read;
-
-                    foreach (NavigationLookup lookup in _navigationTable)
+                    if (p == v)
                     {
-                        // Ensure all nodes are added.
-                        if (!_nodes.Contains(lookup.current))
+                        continue;
+                    }
+                    
+                    // Ensure the nodes have line of sight on each other.
+                    if (Singleton.navigationRadius <= 0)
+                    {
+                        if (Physics.Linecast(p, v, Singleton.obstacleLayers))
                         {
-                            _nodes.Add(lookup.current);
-                        }
-            
-                        if (!_nodes.Contains(lookup.goal))
-                        {
-                            _nodes.Add(lookup.goal);
-                        }
-            
-                        if (!_nodes.Contains(lookup.next))
-                        {
-                            _nodes.Add(lookup.next);
-                        }
-
-                        // Ensure a connection between the current and next nodes exists.
-                        if (!_connections.Any(c => c.A == lookup.current && c.B == lookup.next || c.A == lookup.next && c.B == lookup.current))
-                        {
-                            _connections.Add(new(lookup.current, lookup.next));
+                            continue;
                         }
                     }
-                }
-                else
-                {
-                    loadLookupTable = false;
+                    else
+                    {
+                        Vector3 p1 = p;
+                        p1.y += Singleton.navigationRadius;
+                        Vector3 p2 = v;
+                        p2.y += Singleton.navigationRadius;
+                        Vector3 direction = (p2 - p1).normalized;
+                        if (Physics.SphereCast(p1, Singleton.navigationRadius, direction, out _, Vector3.Distance(p, v), Singleton.obstacleLayers))
+                        {
+                            continue;
+                        }
+                    }
+                
+                    // Ensure there is not already an entry for this connection in the list.
+                    if (Singleton._connections.Any(c => c.A == p && c.B == v || c.A == v && c.B == p))
+                    {
+                        continue;
+                    }
+            
+                    // Add the connection to the list.
+                    Singleton._connections.Add(new(p, v));
                 }
             }
-        
-            // If we should generate a lookup table or there was not one pre-generated to load, generate one.
-            if (!loadLookupTable)
+
+            // If any nodes are not a part of any connections, remove them.
+            for (int i = 0; i < Singleton._nodes.Count; i++)
             {
-                // Generate all node areas in the scene.
-                foreach (NodeArea nodeArea in FindObjectsOfType<NodeArea>())
+                if (!Singleton._connections.Any(c => c.A == Singleton._nodes[i] || c.B == Singleton._nodes[i]))
                 {
-                    nodeArea.Generate();
+                    Singleton._nodes.RemoveAt(i);
                 }
+            }
 
-                // Setup all freely-placed nodes.
-                foreach (Node node in FindObjectsOfType<Node>())
+            // Store all new lookup tables.
+            List<NavigationLookup> table = new();
+    
+            // Loop through all nodes.
+            System.Threading.Tasks.Parallel.For(0, Singleton._nodes.Count, i =>
+            {
+                // Loop through all nodes again so pathfinding can be done on each pair.
+                for (int j = 0; j < Singleton._nodes.Count; j++)
                 {
-                    Vector3 p = node.transform.position;
-                    node.Finish();
-                
-                    foreach (Vector3 v in _nodes)
+                    // Skip if each node is the same.
+                    if (i == j)
                     {
-                        // Ensure the nodes have line of sight on each other.
-                        if (navigationRadius <= 0)
-                        {
-                            if (Physics.Linecast(p, v, obstacleLayers))
-                            {
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            Vector3 p1 = p;
-                            p1.y += navigationRadius;
-                            Vector3 p2 = v;
-                            p2.y += navigationRadius;
-                            Vector3 direction = (p2 - p1).normalized;
-                            if (Physics.SphereCast(p1, navigationRadius, direction, out _, Vector3.Distance(p, v), obstacleLayers))
-                            {
-                                continue;
-                            }
-                        }
-                    
-                        // Ensure there is not already an entry for this connection in the list.
-                        if (_connections.Any(c => c.A == p && c.B == v || c.A == v && c.B == p))
-                        {
-                            continue;
-                        }
-                
-                        // Add the connection to the list.
-                        _connections.Add(new(p, v));
+                        continue;
                     }
+
+                    // Get the A* path from one node to another.
+                    List<Vector3> path = AStar.Perform(Singleton._nodes[i], Singleton._nodes[j], Singleton._connections);
                 
-                    _nodes.Add(p);
-                }
-
-                // If any nodes are not a part of any connections, remove them.
-                for (int i = 0; i < _nodes.Count; i++)
-                {
-                    if (!_connections.Any(c => c.A == _nodes[i] || c.B == _nodes[i]))
+                    // Skip if there was no path.
+                    if (path.Count < 2)
                     {
-                        _nodes.RemoveAt(i--);
+                        continue;
                     }
-                }
 
-                // Store all new lookup tables.
-                List<NavigationLookup> table = new();
-        
-                // Loop through all nodes.
-                for (int i = 0; i < _nodes.Count; i++)
-                {
-                    // Loop through all nodes again so pathfinding can be done on each pair.
-                    for (int j = 0; j < _nodes.Count; j++)
+                    // Loop through all nodes in the path and add them to the lookup table.
+                    lock (table)
                     {
-                        // Skip if each node is the same.
-                        if (i == j)
-                        {
-                            continue;
-                        }
-
-                        // Get the A* path from one node to another.
-                        List<Vector3> path = AStar.Perform(_nodes[i], _nodes[j], _connections);
-                    
-                        // Skip if there was no path.
-                        if (path.Count < 2)
-                        {
-                            continue;
-                        }
-
-                        // Loop through all nodes in the path and add them to the lookup table.
                         for (int k = 0; k < path.Count - 1; k++)
                         {
                             // Ensure there are no duplicates in the lookup table.
-                            if (path[k] == _nodes[j] || table.Any(t => t.current == path[k] && t.goal == _nodes[j] && t.next == path[k + 1]))
+                            int j1 = j;
+                            int k1 = k;
+                            if (path[k] != Singleton._nodes[j] && !table.Any(t => t.current == path[k1] && t.goal == Singleton._nodes[j1] && t.next == path[k1 + 1]))
                             {
-                                continue;
+                                table.Add(new(path[k], Singleton._nodes[j], path[k + 1]));
                             }
-
-                            NavigationLookup lookup = new(path[k], _nodes[j], path[k + 1]);
-                            table.Add(lookup);
                         }
                     }
                 }
+            });
+            
+            // Write the lookup table to a file for fast reading on future runs.
+            Singleton.lookupTable.Write(table.ToArray());
+            
+            stopwatch.Stop();
+            Debug.Log($"Navigation Baked | {Singleton._nodes.Count} Nodes | {Singleton._connections.Count} Connections | {table.Count} Lookups | {stopwatch.Elapsed}");
+        }
+#endif
 
-                // Finalize the lookup table.
-                _navigationTable = table.ToArray();
-
-                // Write the lookup table to a file for fast reading on future runs.
-                if (lookupTable != null)
+        protected virtual void Start()
+        {
+            // Load lookup data if it exists.
+            if (lookupTable != null)
+            {
+                foreach (NavigationLookup lookup in lookupTable.Data)
                 {
-                    lookupTable.Write(_navigationTable);
-                }
+                    // Ensure all nodes are added.
+                    if (!_nodes.Contains(lookup.current))
+                    {
+                        _nodes.Add(lookup.current);
+                    }
 
-                CheckGizmos();
+                    if (!_nodes.Contains(lookup.goal))
+                    {
+                        _nodes.Add(lookup.goal);
+                    }
+
+                    if (!_nodes.Contains(lookup.next))
+                    {
+                        _nodes.Add(lookup.next);
+                    }
+
+                    // Ensure a connection between the current and next nodes exists.
+                    if (!_connections.Any(c => c.A == lookup.current && c.B == lookup.next || c.A == lookup.next && c.B == lookup.current))
+                    {
+                        _connections.Add(new(lookup.current, lookup.next));
+                    }
+                }
             }
+
+            CheckGizmos();
 
             // Clean up all node related components in the scene as they are no longer needed after generation.
             foreach (NodeBase nodeBase in FindObjectsOfType<NodeBase>().OrderBy(n => n.transform.childCount))
             {
                 nodeBase.Finish();
             }
-        
+
             // Setup cameras.
             FindCameras();
             if (selectedCamera != null)
@@ -1871,7 +1883,7 @@ namespace EasyAI
         protected virtual void Update()
         {
             transform.position = Vector3.zero;
-            
+
             if (Agents.Count == 1)
             {
                 SelectedAgent = Agents[0];
@@ -1907,7 +1919,7 @@ namespace EasyAI
                         {
                             Debug.LogError(e);
                         }
-                
+
                         NextAgent();
                     }
                 }
