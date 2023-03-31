@@ -22,13 +22,86 @@ namespace EasyAI.Navigation.Generators
         {
             // TODO - Assignment 4 - Complete corner-graph node generation.
             
-            for(int i = 0; i < NodeArea.RangeX; i++) 
+            for(int i = 1; i < NodeArea.RangeX-1; i++) 
             {
-                for(int k = 0; k < NodeArea.RangeZ; k++) 
-                {
-                    if (NodeArea.IsOpen(i, k) == true)
+                for(int k = 1; k < NodeArea.RangeZ-1; k++) 
+                {   
+                    if (NodeArea.IsOpen(i, k) == false)
                     {
-                        NodeArea.AddNode(i, k);
+                        // when i - 1 and k + 1
+                        if (NodeArea.IsOpen(i - 1 , k ) && NodeArea.IsOpen(i , k + 1))
+                        {
+                            for (int x = 1; x <= cornerNodeSteps; x++)
+                            {
+                                if (NodeArea.IsOpen(i - (1 + x), k) && NodeArea.IsOpen(i, k + (1 + x)))
+                                {
+                                    if (x == cornerNodeSteps)
+                                    {
+                                        NodeArea.AddNode(i - (1 + x), k + (1 + x));
+                                    }
+                                }
+                                else 
+                                {
+                                    break;
+                                }
+                            }
+                        }
+
+                        // when i - 1 and k - 1
+                        if (NodeArea.IsOpen(i - 1, k) && NodeArea.IsOpen(i, k - 1))
+                        {
+                            for (int x = 1; x <= cornerNodeSteps; x++)
+                            {
+                                if (NodeArea.IsOpen(i - (1 + x), k) && NodeArea.IsOpen(i, k - (1 + x)))
+                                {
+                                    if (x == cornerNodeSteps)
+                                    {
+                                        NodeArea.AddNode(i - (1 + x), k - (1 + x));
+                                    }
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        // when i + 1 and k - 1
+                        if (NodeArea.IsOpen(i + 1, k) && NodeArea.IsOpen(i, k - 1))
+                        {
+                            for (int x = 1; x <= cornerNodeSteps; x++)
+                            {
+                                if (NodeArea.IsOpen(i + (1 + x), k) && NodeArea.IsOpen(i, k - (1 + x)))
+                                {
+                                    if (x == cornerNodeSteps)
+                                    {
+                                        NodeArea.AddNode(i + (1 + x), k - (1 + x));
+                                    }
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        // when i + 1 and k + 1
+                        if (NodeArea.IsOpen(i + 1, k) && NodeArea.IsOpen(i, k + 1))
+                        {
+                            for (int x = 1; x <= cornerNodeSteps; x++)
+                            {
+                                if (NodeArea.IsOpen(i + (1 + x), k) && NodeArea.IsOpen(i, k + (1 + x)))
+                                {
+                                    if (x == cornerNodeSteps)
+                                    {
+                                        NodeArea.AddNode(i + (1 + x), k + (1 + x));
+                                    }
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
+                        }
+
                     }
                 }
             }
