@@ -91,6 +91,8 @@ namespace Project
         [Tooltip("All remaining visuals that do not change color based on the soldier's team.")]
         private MeshRenderer[] otherVisuals;
 
+
+        
         /// <summary>
         /// The health of the soldier.
         /// </summary>

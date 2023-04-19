@@ -19,7 +19,7 @@ namespace Project.States
             if (soldier.Role == Soldier.SoliderRole.Attacker) 
             {
                 soldier.SetWeaponPriority(shotgun:2,machineGun:1,pistol:3,rocketLauncher:4,sniper:5);
-                //agent.SetState<SoldierAttackState>();
+                agent.SetState<SoldierAttackState>();
             }
             if (soldier.Role == Soldier.SoliderRole.Defender)
             {
@@ -29,7 +29,7 @@ namespace Project.States
             if (soldier.Role == Soldier.SoliderRole.Collector)
             {
                 soldier.SetWeaponPriority(shotgun: 1, machineGun: 2, pistol: 3, rocketLauncher: 4, sniper: 5);
-                //agent.SetState<SoldierCollectorState>();
+                agent.SetState<SoldierCollectorState>();
             }
 
             
