@@ -7,6 +7,7 @@ using Project.Sensors;
 using static UnityEditor.FilePathAttribute;
 using Project.Positions;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace Project.States 
 {
@@ -17,7 +18,7 @@ namespace Project.States
         {
             
             agent.Log("Enter: Defending state");
-
+            
         }
 
         public override void Execute(Agent agent)
@@ -25,38 +26,16 @@ namespace Project.States
             agent.Log("Execute: Defending state");
 
             Soldier soldier = agent as Soldier;
-            soldier.StopNavigating();
+           
 
             
             HealthAmmoPickup health = soldier.Sense<NearestHealthPickupSensor, HealthAmmoPickup>();
             HealthAmmoPickup ammo = soldier.Sense<NearestAmmoPickupSensor, HealthAmmoPickup>();
-            StrategicPoint defpos = soldier.Sense<RandomDefensivePositionSensor, StrategicPoint>();
+            Vector3 defpos = soldier.Sense<RandomDefensivePositionSensor, Vector3>();
+            
 
-            if (soldier.DetectedEnemies.Count == 0)
-            {
-                soldier.Navigate(soldier.TeamFlagPosition);
-                soldier.NoTarget();
-                return;
-            }
-            Soldier.EnemyMemory target = soldier.DetectedEnemies.OrderBy(e => e.Visible).ThenBy(e => Vector3.Distance(e.Position, soldier.transform.position)).First();
+            
 
-            if (Vector3.Distance(target.Position, soldier.transform.position) < 30)
-            {
-                soldier.SetTarget(new()
-                {
-                    Enemy = target.Enemy,
-                    Position = target.Position,
-                    Visible = target.Visible
-                });
-            }
-
-            if (soldier.DetectedEnemies.Count > 0)
-            {
-                if (target.Visible && Vector3.Distance(target.Position, soldier.transform.position) < 30)
-                {
-                    soldier.Navigate(target.Position);
-                }
-            }
             if (soldier.Health < 50)
             {
                 soldier.Navigate(health.transform.position);
@@ -65,6 +44,29 @@ namespace Project.States
             {
                 soldier.Navigate(ammo.transform.position);
             }
+            if (!soldier.Moving)
+            {
+                soldier.Navigate(defpos);
+            }
+
+            if (soldier.DetectedEnemies.Count == 0)
+            {
+                soldier.NoTarget();
+                return;
+            }
+            Soldier.EnemyMemory target = soldier.DetectedEnemies.OrderBy(e => e.Visible).ThenBy(e => Vector3.Distance(e.Position, soldier.transform.position)).First();
+
+            soldier.SetTarget(new()
+            {
+                Enemy = target.Enemy,
+                Position = target.Position,
+                Visible = target.Visible
+            });
+
+
+            
+
+
             
         }
 

@@ -21,6 +21,9 @@ namespace Project.States
             Soldier soldier = agent as Soldier;
             HealthAmmoPickup health = soldier.Sense<NearestHealthPickupSensor, HealthAmmoPickup>();
             HealthAmmoPickup ammo = soldier.Sense<NearestAmmoPickupSensor, HealthAmmoPickup>();
+            Vector3 atkpos = soldier.Sense<RandomDefensivePositionSensor, Vector3>();
+
+
 
             if (soldier.Health < 50)
             {
@@ -31,26 +34,29 @@ namespace Project.States
             {
                 soldier.Navigate(ammo.transform.position);
             }
+
+            if (!soldier.Moving) 
+            {
+                soldier.Navigate(atkpos);
+            }
           
             
             if (soldier.DetectedEnemies.Count == 0)
             {
-                soldier.Navigate(soldier.EnemyFlagPosition);
                 soldier.NoTarget();
                 return;
             }
 
             Soldier.EnemyMemory target = soldier.DetectedEnemies.OrderBy(e => e.Visible).ThenBy(e => Vector3.Distance(e.Position, soldier.transform.position)).First();
 
-            if (Vector3.Distance(target.Position, soldier.transform.position) < 30) 
+           
+            soldier.SetTarget(new()
             {
-                soldier.SetTarget(new()
-                {
-                    Enemy = target.Enemy,
-                    Position = target.Position,
-                    Visible = target.Visible
-                });
-            }
+                Enemy = target.Enemy,
+                Position = target.Position,
+                Visible = target.Visible
+            });
+            
 
             if (soldier.DetectedEnemies.Count > 0) 
             {

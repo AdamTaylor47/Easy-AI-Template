@@ -22,7 +22,9 @@ namespace Project.States {
             
             HealthAmmoPickup ammo = soldier.Sense<NearestAmmoPickupSensor, HealthAmmoPickup>();
 
+            
             soldier.Navigate(soldier.EnemyFlagPosition);
+
             if(soldier.CarryingFlag) 
             {
                 soldier.Navigate(soldier.TeamFlagPosition);
