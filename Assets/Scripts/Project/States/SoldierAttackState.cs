@@ -21,7 +21,7 @@ namespace Project.States
             Soldier soldier = agent as Soldier;
             HealthAmmoPickup health = soldier.Sense<NearestHealthPickupSensor, HealthAmmoPickup>();
             HealthAmmoPickup ammo = soldier.Sense<NearestAmmoPickupSensor, HealthAmmoPickup>();
-            Vector3 atkpos = soldier.Sense<RandomDefensivePositionSensor, Vector3>();
+            Vector3 atkpos = soldier.Sense<RandomOffensivePositionSensor, Vector3>();
 
 
 

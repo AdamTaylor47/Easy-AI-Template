@@ -62,11 +62,6 @@ namespace Project.States
                 Position = target.Position,
                 Visible = target.Visible
             });
-
-
-            
-
-
             
         }
 

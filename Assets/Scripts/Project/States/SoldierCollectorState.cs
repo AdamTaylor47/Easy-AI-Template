@@ -27,7 +27,9 @@ namespace Project.States {
 
             if(soldier.CarryingFlag) 
             {
+               
                 soldier.Navigate(soldier.TeamFlagPosition);
+                return;
             }
 
             if (soldier.Weapons[1].Ammo == 0)
