@@ -39,14 +39,22 @@ namespace Project.States
             if (soldier.Health < 50)
             {
                 soldier.Navigate(health.transform.position);
+                return;
             }
             if (soldier.Weapons[1].Ammo == 0)
             {
                 soldier.Navigate(ammo.transform.position);
+                return;
+            }
+            if (!soldier.FlagAtBase) 
+            {
+                soldier.Navigate(soldier.TeamFlagPosition);
+                return;
             }
             if (!soldier.Moving)
             {
                 soldier.Navigate(defpos);
+                return;
             }
 
             if (soldier.DetectedEnemies.Count == 0)

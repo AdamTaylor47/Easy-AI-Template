@@ -28,16 +28,19 @@ namespace Project.States
             if (soldier.Health < 50)
             {
                 soldier.Navigate(health.transform.position);
+                return;
             }
 
             if (soldier.Weapons[1].Ammo == 0) 
             {
                 soldier.Navigate(ammo.transform.position);
+                return;
             }
 
             if (!soldier.Moving) 
             {
                 soldier.Navigate(atkpos);
+                return;
             }
           
             
@@ -63,6 +66,7 @@ namespace Project.States
                 if (target.Visible && Vector3.Distance(target.Position, soldier.transform.position) < 30)
                 {
                     soldier.Navigate(target.Position);
+                    return;
                 }
             }
             
